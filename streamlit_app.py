@@ -1,7 +1,13 @@
 import os
+import sys
+import subprocess
+import tempfile
+import pickle
+import json
 import time
 import base64
 import threading
+import numpy as np
 import gymnasium as gym
 import streamlit as st
 import streamlit.components.v1 as components
@@ -65,6 +71,155 @@ def run_algorithm(label, algo, train_episodes, alpha, gamma,
                                  lr=lr, verbose=False)
     env.close()
     return Q, rewards, steps
+
+
+def run_episodes_for_viz(Q, label, n_episodes=3, max_steps=200):
+    """Run episodes with rgb_array render and capture frames as base64 PNG."""
+    from PIL import Image
+    import io
+
+    all_episodes = []
+    for ep in range(n_episodes):
+        env = gym.make("Taxi-v3", render_mode="rgb_array")
+        state, _ = env.reset()
+        total_r = 0.0
+        frames = []
+
+        rgb = env.render()
+        img = Image.fromarray(rgb).resize((500, 500), Image.NEAREST)
+        buf = io.BytesIO(); img.save(buf, format="PNG", optimize=True)
+        frames.append({"img": base64.b64encode(buf.getvalue()).decode(),
+                        "reward": 0.0, "done": False, "action": -1})
+
+        for _ in range(max_steps):
+            action = int(np.argmax(Q[state])) if Q is not None else env.action_space.sample()
+            ns, reward, terminated, truncated, _ = env.step(action)
+            total_r += float(reward)
+            done = bool(terminated or truncated)
+            rgb = env.render()
+            img = Image.fromarray(rgb).resize((500, 500), Image.NEAREST)
+            buf = io.BytesIO(); img.save(buf, format="PNG", optimize=True)
+            frames.append({"img": base64.b64encode(buf.getvalue()).decode(),
+                            "reward": round(total_r, 1), "done": done, "action": action})
+            state = ns
+            if done:
+                break
+        env.close()
+        all_episodes.append(frames)
+    return all_episodes
+
+
+def build_grid_html(all_episodes, algo_label):
+    episodes_meta = []
+    all_images = []
+    for ep in all_episodes:
+        ep_meta = []
+        for f in ep:
+            all_images.append(f["img"])
+            ep_meta.append({"idx": len(all_images) - 1, "reward": f["reward"],
+                            "done": f["done"], "action": f["action"]})
+        episodes_meta.append(ep_meta)
+
+    meta_json = json.dumps(episodes_meta)
+    imgs_json = json.dumps(all_images)
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{background:#080b14;font-family:'Inter',system-ui,sans-serif;
+      color:#e2e8f0;display:flex;flex-direction:column;
+      align-items:center;padding:20px 10px;gap:14px;}}
+h3{{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#FBBF24;}}
+#stats-bar{{display:flex;gap:28px;}}
+.stat{{display:flex;flex-direction:column;align-items:center;gap:2px;}}
+.stat-label{{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#475569;}}
+.stat-value{{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#FBBF24;}}
+#frame-img{{border:2px solid rgba(251,191,36,0.25);border-radius:10px;
+            image-rendering:pixelated;width:500px;height:500px;}}
+#action-lbl{{font-size:12px;color:#64748b;font-family:monospace;height:18px;}}
+#controls{{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;}}
+button{{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);
+        color:#FBBF24;padding:7px 14px;border-radius:6px;cursor:pointer;
+        font-size:11px;font-weight:600;letter-spacing:1px;transition:background .2s;}}
+button:hover{{background:rgba(251,191,36,0.18);}}
+button.primary{{background:rgba(251,191,36,0.2);border-color:#FBBF24;}}
+#speed-lbl{{font-size:11px;color:#64748b;font-family:monospace;min-width:36px;text-align:center;}}
+</style></head>
+<body>
+<h3>🚕 Watch Agent Play — {algo_label}</h3>
+<div id="stats-bar">
+  <div class="stat"><div class="stat-label">Episode</div><div class="stat-value" id="ep-v">1</div></div>
+  <div class="stat"><div class="stat-label">Step</div><div class="stat-value" id="step-v">0</div></div>
+  <div class="stat"><div class="stat-label">Reward</div><div class="stat-value" id="rew-v">0</div></div>
+  <div class="stat"><div class="stat-label">Status</div><div class="stat-value" id="stat-v" style="font-size:13px">—</div></div>
+</div>
+<img id="frame-img" src="" alt="Taxi-v3"/>
+<div id="action-lbl">—</div>
+<div id="controls">
+  <button class="primary" onclick="togglePlay()" id="play-btn">▶ Play</button>
+  <button onclick="prev()">‹ Prev</button>
+  <button onclick="next()">Next ›</button>
+  <button onclick="restart()">↺ Restart</button>
+  <button onclick="chSpd(-1)">− Speed</button>
+  <span id="speed-lbl">1×</span>
+  <button onclick="chSpd(1)">+ Speed</button>
+</div>
+<script>
+const EPISODES={meta_json};
+const IMGS={imgs_json};
+const ACTS=["South ↓","North ↑","East →","West ←","Pickup ▲","Dropoff ▼"];
+const SPEEDS=[0.25,0.5,1,2,4];
+let epIdx=0,fIdx=0,playing=false,spdIdx=2,timer=null;
+const imgEl=document.getElementById('frame-img');
+
+function show(){{
+  const f=EPISODES[epIdx][fIdx];
+  imgEl.src='data:image/png;base64,'+IMGS[f.idx];
+  document.getElementById('ep-v').textContent=(epIdx+1)+'/'+EPISODES.length;
+  document.getElementById('step-v').textContent=fIdx;
+  document.getElementById('rew-v').textContent=f.reward;
+  const sv=document.getElementById('stat-v');
+  if(f.done){{sv.textContent='✓ Done';sv.style.color='#22c55e';}}
+  else{{sv.textContent='Running';sv.style.color='#FBBF24';}}
+  if(f.action>=0) document.getElementById('action-lbl').textContent='Last action: '+ACTS[f.action];
+  else document.getElementById('action-lbl').textContent='—';
+}}
+show();
+
+function advance(){{
+  if(fIdx<EPISODES[epIdx].length-1)fIdx++;
+  else if(epIdx<EPISODES.length-1){{epIdx++;fIdx=0;}}
+  else{{stopPlay();return;}}
+  show();
+}}
+function stopPlay(){{
+  playing=false;clearInterval(timer);
+  document.getElementById('play-btn').textContent='▶ Play';
+}}
+function togglePlay(){{
+  playing=!playing;
+  if(playing){{
+    document.getElementById('play-btn').textContent='⏸ Pause';
+    timer=setInterval(advance,700/SPEEDS[spdIdx]);
+  }}else{{stopPlay();}}
+}}
+function next(){{if(!playing)advance();}}
+function prev(){{
+  if(!playing){{
+    if(fIdx>0)fIdx--;
+    else if(epIdx>0){{epIdx--;fIdx=EPISODES[epIdx].length-1;}}
+    show();
+  }}
+}}
+function restart(){{stopPlay();epIdx=0;fIdx=0;show();}}
+function chSpd(d){{
+  spdIdx=Math.max(0,Math.min(SPEEDS.length-1,spdIdx+d));
+  document.getElementById('speed-lbl').textContent=SPEEDS[spdIdx]+'×';
+  if(playing){{clearInterval(timer);timer=setInterval(advance,700/SPEEDS[spdIdx]);}}
+}}
+</script></body></html>"""
+    return html
 
 
 def evaluate_policy(label, Q, test_episodes):
@@ -743,10 +898,16 @@ def main():
             with st.expander("Aperçu du rapport", expanded=False):
                 st.markdown(f'<div class="report-box">{report_content}</div>', unsafe_allow_html=True)
 
-    # pygame
+    # policy visualization
     if st.session_state.run_done and st.session_state.trained_tables:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="section-title">Policy Visualization</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<p style="color:#94a3b8;font-size:13px;margin-bottom:14px;">'
+            'Lance une fenêtre de jeu Taxi-v3 — regarde l\'agent jouer en temps réel.</p>',
+            unsafe_allow_html=True,
+        )
+
         c1, c2, c3 = st.columns(3)
         with c1:
             vis_algo = st.selectbox("Algorithm", options=list(st.session_state.trained_tables.keys()))
@@ -755,21 +916,22 @@ def main():
         with c3:
             vis_delay = st.slider("Step delay (s)", 0.05, 1.5, 0.4, 0.05, key="vis_dl")
 
-        st.markdown(
-            '<p style="color:#475569;font-size:12px;margin-bottom:12px;">'
-            'Ouvre une fenêtre animée qui rejoue les épisodes de l\'agent entraîné en temps réel — '
-            'tu vois le taxi naviguer dans la grille, prendre le passager et le déposer.</p>',
-            unsafe_allow_html=True,
-        )
         if st.button("▶  Watch Agent Play"):
             Q = st.session_state.trained_tables[vis_algo]
-            try:
-                t = threading.Thread(target=visualize_policy,
-                                     args=(Q, vis_episodes, vis_algo, vis_delay), daemon=True)
-                t.start()
-                st.info("Fenêtre Pygame ouverte. Ferme-la pour revenir au dashboard.")
-            except Exception as exc:
-                st.error(f"Cannot open Pygame: {exc}")
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pkl")
+            pickle.dump(Q, tmp)
+            tmp.close()
+            script = f"""
+import pickle, sys
+sys.path.insert(0, '{os.path.dirname(__file__)}')
+from visualization.pygame_vis import visualize_policy
+with open('{tmp.name}', 'rb') as f:
+    Q = pickle.load(f)
+visualize_policy(Q, {int(vis_episodes)}, '{vis_algo}', {vis_delay})
+import os; os.unlink('{tmp.name}')
+"""
+            subprocess.Popen([sys.executable, "-c", script])
+            st.info("Fenêtre Pygame ouverte. Ferme-la pour revenir au dashboard.")
 
 
 if __name__ == "__main__":
