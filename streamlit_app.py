@@ -895,6 +895,31 @@ def main():
         status_slot   = col_status.empty()
         progress_bar  = st.progress(0)
 
+        # real-time chart placeholder
+        rt_chart_slot = st.empty()
+        rt_chart_data = {}  # {label: [moving_avg_rewards]}
+
+        def _update_realtime_chart():
+            """Redraw the real-time learning curve."""
+            if not rt_chart_data:
+                return
+            import plotly.graph_objects as go
+            fig = go.Figure()
+            algo_colors = {"Random": "#6b7280", "Q-Learning": "#FBBF24", "SARSA": "#f97316",
+                           "Monte Carlo": "#3b82f6", "DQN-ER": "#8b5cf6"}
+            for lbl, vals in rt_chart_data.items():
+                fig.add_trace(go.Scatter(
+                    y=vals, mode="lines", name=lbl,
+                    line=dict(color=algo_colors.get(lbl, "#9b59b6"), width=2)))
+            fig.update_layout(
+                title=dict(text="Live Training — Reward (moving avg)", font=dict(color="#FBBF24", size=14)),
+                xaxis=dict(title="Episode", color="#94a3b8", gridcolor="#1e293b"),
+                yaxis=dict(title="Reward", color="#94a3b8", gridcolor="#1e293b"),
+                plot_bgcolor="#080b14", paper_bgcolor="#080b14",
+                legend=dict(font=dict(color="#e2e8f0")),
+                height=300, margin=dict(l=50, r=20, t=40, b=40))
+            rt_chart_slot.plotly_chart(fig, use_container_width=True, key=f"rt_{len(rt_chart_data)}_{sum(len(v) for v in rt_chart_data.values())}")
+
         trained_tables = {}
         for idx, label in enumerate(selected_algos, start=1):
             status_slot.markdown(
@@ -911,6 +936,15 @@ def main():
                                               reward_mode=reward_mode)
             trained_tables[label] = Q
             all_results[label]    = (rewards, steps)
+
+            # update real-time chart with moving average
+            window = max(1, len(rewards) // 50)
+            ma = []
+            for i in range(len(rewards)):
+                s = max(0, i - window + 1)
+                ma.append(sum(rewards[s:i+1]) / (i - s + 1))
+            rt_chart_data[label] = ma
+            _update_realtime_chart()
 
             status_slot.markdown(
                 f'<div class="status-running"><div class="status-dot"></div>'
@@ -949,6 +983,11 @@ def main():
         all_results  = st.session_state.all_results
         test_results = st.session_state.test_results
 
+        # clear real-time chart now that final results are ready
+        try:
+            rt_chart_slot.empty()
+        except Exception:
+            pass
         st.markdown("<br>", unsafe_allow_html=True)
         render_metric_cards(summary)
         render_algo_cards(summary)
@@ -982,6 +1021,77 @@ def main():
                 '<span style="color:#ef4444;">Red</span> = agent is unsure</p>',
                 unsafe_allow_html=True)
             st.image(heatmap_path, use_container_width=True)
+
+        # ── Auto-generated narrative analysis ──
+        st.markdown('<div class="chart-card"><div class="chart-card-title"><span></span>AI Analysis</div></div>',
+                    unsafe_allow_html=True)
+
+        # build narrative from data
+        narrative_parts = []
+        best_algo = min(summary, key=lambda x: float(x["Test steps mean"]))
+        worst_algo = max(summary, key=lambda x: float(x["Test steps mean"]))
+        best_name = best_algo["Algorithme"]
+        worst_name = worst_algo["Algorithme"]
+        best_steps = float(best_algo["Test steps mean"])
+        best_reward = float(best_algo["Test reward mean"])
+        worst_steps = float(worst_algo["Test steps mean"])
+
+        narrative_parts.append(
+            f"**{best_name}** est le meilleur algorithme avec **{best_steps:.1f} steps** "
+            f"et un reward moyen de **{best_reward:.1f}**.")
+
+        if len(summary) > 1 and best_name != worst_name:
+            improvement = ((worst_steps - best_steps) / worst_steps) * 100
+            narrative_parts.append(
+                f" Il surpasse {worst_name} de **{improvement:.0f}%** en nombre de steps "
+                f"({best_steps:.1f} vs {worst_steps:.1f}).")
+
+        # convergence analysis
+        best_data = all_results.get(best_name)
+        if best_data:
+            rewards_data = best_data[0]
+            # find convergence point (first episode where moving avg > 0 for 100 consecutive)
+            window = min(100, len(rewards_data))
+            conv_ep = None
+            for i in range(window, len(rewards_data)):
+                avg = sum(rewards_data[i-window:i]) / window
+                if avg > 0:
+                    conv_ep = i
+                    break
+            if conv_ep:
+                narrative_parts.append(
+                    f" {best_name} a convergé vers l'épisode **{conv_ep}** "
+                    f"(reward positif stable sur {window} épisodes).")
+            else:
+                narrative_parts.append(
+                    f" {best_name} n'a pas atteint une convergence stable — "
+                    f"plus d'épisodes d'entraînement pourraient améliorer les résultats.")
+
+        # random baseline comparison
+        narrative_parts.append(
+            f" Par rapport à un agent aléatoire (~200 steps), "
+            f"{best_name} est **{200 / max(1, best_steps):.0f}× plus rapide**.")
+
+        # recommendation
+        if best_steps <= 15:
+            narrative_parts.append(
+                " La politique apprise est **quasi-optimale** — "
+                "l'agent a trouvé les routes les plus courtes.")
+        elif best_steps <= 30:
+            narrative_parts.append(
+                " La politique est **bonne mais perfectible** — "
+                "augmenter les épisodes d'entraînement pourrait l'améliorer.")
+        else:
+            narrative_parts.append(
+                " La politique **n'est pas optimale** — "
+                "il est recommandé d'augmenter les épisodes ou d'ajuster les hyperparamètres.")
+
+        narrative_text = "".join(narrative_parts)
+        st.markdown(
+            f'<div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);'
+            f'border-radius:12px;padding:20px;color:#e2e8f0;font-size:14px;line-height:1.8;">'
+            f'{narrative_text}</div>',
+            unsafe_allow_html=True)
 
         # report
         report_path = os.path.join(STORAGE_DIR, "report_streamlit.txt")
