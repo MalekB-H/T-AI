@@ -16,6 +16,7 @@ from plotly.subplots import make_subplots
 
 from agents import random_agent, q_learning, sarsa, monte_carlo, dqn_experience_replay
 from environments import ObstacleTaxiEnv
+from environments import ShapedRewardTaxiEnv
 from core.tester import test_policy
 from utils.plots import plot_learning_curves, plot_bar_benchmark, plot_boxplots, plot_qtable_heatmap
 from utils.report import generate_report
@@ -59,11 +60,13 @@ def moving_avg(data, window):
 
 def run_algorithm(label, algo, train_episodes, alpha, gamma,
                   eps_start, eps_decay, batch_size, memory_size, lr,
-                  multi_passenger=False, obstacle=False):
+                  multi_passenger=False, obstacle=False, reward_mode="default"):
     if multi_passenger:
         env = MultiPassengerTaxiEnv()
     elif obstacle:
         env = ObstacleTaxiEnv()
+    elif reward_mode != "default":
+        env = ShapedRewardTaxiEnv(reward_mode=reward_mode)
     else:
         env = gym.make("Taxi-v3")
     if label == "Random":
@@ -236,12 +239,14 @@ function chSpd(d){{
     return html
 
 
-def evaluate_policy(label, Q, test_episodes, multi_passenger=False, obstacle=False):
+def evaluate_policy(label, Q, test_episodes, multi_passenger=False, obstacle=False, reward_mode="default"):
     if Q is None:
         if multi_passenger:
             env = MultiPassengerTaxiEnv()
         elif obstacle:
             env = ObstacleTaxiEnv()
+        elif reward_mode != "default":
+            env = ShapedRewardTaxiEnv(reward_mode=reward_mode)
         else:
             env = gym.make("Taxi-v3")
         rewards, steps = random_agent(env, test_episodes, verbose=False)
@@ -795,6 +800,14 @@ def main():
         is_obstacle = game_mode.startswith("1 Passenger + O")
         presets = PRESETS_2P if is_multi else PRESETS_1P
 
+        # Reward shaping selector (only for 1 passenger modes)
+        if not is_multi:
+            reward_mode = st.selectbox("🎁 Reward mode",
+                options=["default", "distance", "milestone", "aggressive"],
+                help="default = Gym rewards | distance = +2 closer/-1.5 farther | milestone = +10 pickup bonus | aggressive = heavy penalties + big bonus")
+        else:
+            reward_mode = "default"
+
         preset = st.selectbox("⚡ Preset", options=["Custom"] + list(presets.keys()), index=0)
         p = presets.get(preset, None)
 
@@ -856,6 +869,13 @@ def main():
             'border-radius:20px;padding:5px 16px;font-size:12px;font-weight:600;color:#EF4444;letter-spacing:1px;'
             'margin-bottom:16px;">⚠️ OBSTACLE MODE — Danger zones on grid &nbsp;(Q-Learning vs SARSA)</div>',
             unsafe_allow_html=True)
+    if reward_mode != "default":
+        mode_labels = {"distance": "Distance-based", "milestone": "Milestone", "aggressive": "Aggressive"}
+        st.markdown(
+            f'<div style="display:inline-block;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.35);'
+            f'border-radius:20px;padding:5px 16px;font-size:12px;font-weight:600;color:#22c55e;letter-spacing:1px;'
+            f'margin-bottom:16px;">🎁 REWARD SHAPING — {mode_labels.get(reward_mode, reward_mode)} mode</div>',
+            unsafe_allow_html=True)
 
     col_btn, col_status = st.columns([1, 4])
     with col_btn:
@@ -887,14 +907,16 @@ def main():
             Q, rewards, steps = run_algorithm(label, algo, train_episodes,
                                               alpha, gamma, eps_start, eps_decay,
                                               batch_size, memory_size, lr,
-                                              multi_passenger=is_multi, obstacle=is_obstacle)
+                                              multi_passenger=is_multi, obstacle=is_obstacle,
+                                              reward_mode=reward_mode)
             trained_tables[label] = Q
             all_results[label]    = (rewards, steps)
 
             status_slot.markdown(
                 f'<div class="status-running"><div class="status-dot"></div>'
                 f'Evaluating {label}…</div>', unsafe_allow_html=True)
-            test_rewards, test_steps = evaluate_policy(label, Q, test_episodes, multi_passenger=is_multi, obstacle=is_obstacle)
+            test_rewards, test_steps = evaluate_policy(label, Q, test_episodes, multi_passenger=is_multi,
+                                                       obstacle=is_obstacle, reward_mode=reward_mode)
             test_results[label]      = (test_rewards, test_steps)
 
             summary.append({
