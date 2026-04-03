@@ -17,7 +17,7 @@ from plotly.subplots import make_subplots
 from agents import random_agent, q_learning, sarsa, monte_carlo, dqn_experience_replay
 from environments import ObstacleTaxiEnv
 from core.tester import test_policy
-from utils.plots import plot_learning_curves, plot_bar_benchmark, plot_boxplots
+from utils.plots import plot_learning_curves, plot_bar_benchmark, plot_boxplots, plot_qtable_heatmap
 from utils.report import generate_report
 from visualization.pygame_vis import visualize_policy
 from environments import MultiPassengerTaxiEnv
@@ -268,14 +268,17 @@ def evaluate_policy(label, Q, test_episodes, multi_passenger=False, obstacle=Fal
     return rewards, steps
 
 
-def plot_all_results(all_results, test_results):
+def plot_all_results(all_results, test_results, trained_tables=None):
     lp = os.path.join(STORAGE_DIR, "learning_curves.png")
     bp = os.path.join(STORAGE_DIR, "benchmark_bar.png")
     xp = os.path.join(STORAGE_DIR, "boxplot_test.png")
+    hp = os.path.join(STORAGE_DIR, "qtable_heatmap.png")
     plot_learning_curves(all_results, output=lp)
     plot_bar_benchmark(all_results, output=bp)
     plot_boxplots(test_results, output=xp)
-    return lp, bp, xp
+    if trained_tables:
+        plot_qtable_heatmap(trained_tables, output=hp)
+    return lp, bp, xp, hp
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 
@@ -910,7 +913,7 @@ def main():
         report_path = os.path.join(STORAGE_DIR, "report_streamlit.txt")
         generate_report(all_results, test_results, mode="Streamlit",
                         params=report_params, output_path=report_path)
-        plot_all_results(all_results, test_results)   # keep file exports
+        plot_all_results(all_results, test_results, trained_tables)   # keep file exports
 
         st.session_state.trained_tables = trained_tables
         st.session_state.all_results    = all_results
@@ -945,6 +948,18 @@ def main():
         st.markdown('<div class="chart-card"><div class="chart-card-title"><span></span>Test Distribution</div></div>',
                     unsafe_allow_html=True)
         plotly_boxplots(test_results)
+
+        # Q-Table Heatmap
+        heatmap_path = os.path.join(STORAGE_DIR, "qtable_heatmap.png")
+        if os.path.exists(heatmap_path):
+            st.markdown('<div class="chart-card"><div class="chart-card-title"><span></span>Q-Table Heatmap</div></div>',
+                        unsafe_allow_html=True)
+            st.markdown(
+                '<p style="color:#94a3b8;font-size:13px;margin:-8px 0 12px 0;">'
+                'Max Q-value per grid cell — <span style="color:#22c55e;">Green</span> = agent knows what to do, '
+                '<span style="color:#ef4444;">Red</span> = agent is unsure</p>',
+                unsafe_allow_html=True)
+            st.image(heatmap_path, use_container_width=True)
 
         # report
         report_path = os.path.join(STORAGE_DIR, "report_streamlit.txt")

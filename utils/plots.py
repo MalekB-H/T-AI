@@ -65,6 +65,107 @@ def plot_learning_curves(
 
 
 # ──────────────────────────────────────────────────────────────
+# 1b. Q-Table Heatmap
+# ──────────────────────────────────────────────────────────────
+
+def plot_qtable_heatmap(
+    trained_tables: dict,
+    output: str = "qtable_heatmap.png",
+) -> None:
+    """
+    Heatmap 5x5 showing max Q-value per grid cell for each algorithm.
+    Green = agent knows what to do, Red = agent is unsure.
+
+    trained_tables : {label: Q_table (ndarray)}
+    """
+    # filter out None (Random agent) and DQN (not a Q-table)
+    tables = {k: v for k, v in trained_tables.items()
+              if v is not None and hasattr(v, 'shape') and len(v.shape) == 2}
+    if not tables:
+        return
+
+    n = len(tables)
+    fig, axes = plt.subplots(1, n, figsize=(5 * n, 5),
+                             facecolor="#080b14")
+    fig.suptitle("Q-Table Heatmap — Best Q-value per cell",
+                 fontsize=14, fontweight="bold", color="#e2e8f0")
+
+    if n == 1:
+        axes = [axes]
+
+    loc_names = {(0, 0): "R", (0, 4): "G", (4, 0): "Y", (4, 3): "B"}
+
+    for ax, (label, Q) in zip(axes, tables.items()):
+        grid = np.zeros((5, 5))
+        n_states = Q.shape[0]
+
+        for row in range(5):
+            for col in range(5):
+                max_q = -np.inf
+                # iterate over all passenger/dest combos for this cell
+                if n_states == 500:
+                    # Taxi-v3 encoding: (row*5+col)*5*4 + pass*4 + dest
+                    for p in range(5):
+                        for d in range(4):
+                            s = ((row * 5 + col) * 5 + p) * 4 + d
+                            val = np.max(Q[s])
+                            if val > max_q:
+                                max_q = val
+                elif n_states == 14400:
+                    # MultiPassenger encoding
+                    for p1 in range(6):
+                        for d1 in range(4):
+                            for p2 in range(6):
+                                for d2 in range(4):
+                                    s = (row * 5 * 6 * 4 * 6 * 4 +
+                                         col * 6 * 4 * 6 * 4 +
+                                         p1 * 4 * 6 * 4 +
+                                         d1 * 6 * 4 +
+                                         p2 * 4 + d2)
+                                    if s < n_states:
+                                        val = np.max(Q[s])
+                                        if val > max_q:
+                                            max_q = val
+                else:
+                    # fallback: same as Taxi-v3
+                    for p in range(5):
+                        for d in range(4):
+                            s = ((row * 5 + col) * 5 + p) * 4 + d
+                            if s < n_states:
+                                val = np.max(Q[s])
+                                if val > max_q:
+                                    max_q = val
+                grid[row][col] = max_q
+
+        im = ax.imshow(grid, cmap="RdYlGn", interpolation="nearest")
+        ax.set_facecolor("#080b14")
+        ax.set_title(label, fontsize=13, fontweight="bold", color="#FBBF24")
+        ax.set_xticks(range(5))
+        ax.set_yticks(range(5))
+        ax.tick_params(colors="#94a3b8")
+
+        # annotate cells with values and location names
+        for row in range(5):
+            for col in range(5):
+                val = grid[row][col]
+                loc = loc_names.get((row, col), "")
+                text = f"{val:.1f}"
+                if loc:
+                    text = f"{loc}\n{val:.1f}"
+                color = "white" if val < (grid.max() + grid.min()) / 2 else "black"
+                ax.text(col, row, text, ha="center", va="center",
+                        fontsize=10, fontweight="bold", color=color)
+
+        cbar = fig.colorbar(im, ax=ax, shrink=0.8)
+        cbar.ax.tick_params(colors="#94a3b8")
+
+    plt.tight_layout()
+    plt.savefig(output, dpi=120)
+    plt.close()
+    print(f"  📊 {output}")
+
+
+# ──────────────────────────────────────────────────────────────
 # 2. Benchmark en barres (100 derniers épisodes)
 # ──────────────────────────────────────────────────────────────
 
