@@ -26,8 +26,9 @@ def monte_carlo(
     rewards_hist  : récompenses par épisode
     steps_list    : steps par épisode
     """
-    Q      = np.zeros((STATE_SIZE, ACTION_SIZE))
-    counts = np.zeros((STATE_SIZE, ACTION_SIZE))   # nb de visites par (s,a)
+    n_states = getattr(env.observation_space, 'n', STATE_SIZE)
+    Q      = np.zeros((n_states, ACTION_SIZE))
+    counts = np.zeros((n_states, ACTION_SIZE))   # nb de visites par (s,a)
     rewards_hist, steps_list = [], []
     eps = eps_start
 

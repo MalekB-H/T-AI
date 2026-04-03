@@ -39,8 +39,9 @@ def dqn_experience_replay(
     rewards    : récompenses par épisode
     steps_list : steps par épisode
     """
-    Q        = np.zeros((STATE_SIZE, ACTION_SIZE))   # réseau principal
-    Q_target = np.zeros((STATE_SIZE, ACTION_SIZE))   # réseau cible (frozen)
+    n_states = getattr(env.observation_space, 'n', STATE_SIZE)
+    Q        = np.zeros((n_states, ACTION_SIZE))   # réseau principal
+    Q_target = np.zeros((n_states, ACTION_SIZE))   # réseau cible (frozen)
     memory   = deque(maxlen=memory_size)             # replay buffer
     rewards, steps_list = [], []
     eps = eps_start

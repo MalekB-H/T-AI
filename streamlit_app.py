@@ -19,6 +19,7 @@ from core.tester import test_policy
 from utils.plots import plot_learning_curves, plot_bar_benchmark, plot_boxplots
 from utils.report import generate_report
 from visualization.pygame_vis import visualize_policy
+from environments import MultiPassengerTaxiEnv
 
 STORAGE_DIR = "streamlit_outputs"
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -53,8 +54,9 @@ def moving_avg(data, window):
 
 
 def run_algorithm(label, algo, train_episodes, alpha, gamma,
-                  eps_start, eps_decay, batch_size, memory_size, lr):
-    env = gym.make("Taxi-v3")
+                  eps_start, eps_decay, batch_size, memory_size, lr,
+                  multi_passenger=False):
+    env = MultiPassengerTaxiEnv() if multi_passenger else gym.make("Taxi-v3")
     if label == "Random":
         rewards, steps = algo(env, train_episodes, verbose=False)
         Q = None
@@ -222,10 +224,26 @@ function chSpd(d){{
     return html
 
 
-def evaluate_policy(label, Q, test_episodes):
+def evaluate_policy(label, Q, test_episodes, multi_passenger=False):
     if Q is None:
-        env = gym.make("Taxi-v3")
+        env = MultiPassengerTaxiEnv() if multi_passenger else gym.make("Taxi-v3")
         rewards, steps = random_agent(env, test_episodes, verbose=False)
+        env.close()
+    elif multi_passenger:
+        env = MultiPassengerTaxiEnv()
+        rewards, steps = [], []
+        for _ in range(test_episodes):
+            state, _ = env.reset()
+            total_r, s = 0, 0
+            for _ in range(400):
+                action = int(np.argmax(Q[state]))
+                state, reward, done, trunc, _ = env.step(action)
+                total_r += reward
+                s += 1
+                if done or trunc:
+                    break
+            rewards.append(total_r)
+            steps.append(s)
         env.close()
     else:
         rewards, steps = test_policy(Q, test_episodes, verbose=False)
@@ -736,17 +754,27 @@ def main():
     st.markdown(CSS, unsafe_allow_html=True)
 
     # sidebar
-    PRESETS = {
+    PRESETS_1P = {
         "Fast demo (500 ep)":      {"train": 500,  "test": 100, "alpha": 0.15, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.99},
         "Standard (2000 ep)":      {"train": 2000, "test": 200, "alpha": 0.15, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.995},
         "Deep training (5000 ep)": {"train": 5000, "test": 300, "alpha": 0.10, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.998},
+    }
+    PRESETS_2P = {
+        "Fast demo (5000 ep)":      {"train": 5000,  "test": 100, "alpha": 0.15, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.9995},
+        "Standard (15000 ep)":      {"train": 15000, "test": 200, "alpha": 0.15, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.9998},
+        "Deep training (25000 ep)": {"train": 25000, "test": 300, "alpha": 0.10, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.9999},
     }
 
     with st.sidebar:
         st.markdown('<div class="sidebar-logo">🚕 &nbsp;Taxi Driver RL</div>', unsafe_allow_html=True)
 
-        preset = st.selectbox("⚡ Preset", options=["Custom"] + list(PRESETS.keys()), index=0)
-        p = PRESETS.get(preset, None)
+        game_mode = st.radio("🎮 Game mode", ["1 Passenger", "2 Passengers (Bonus)"],
+                             help="1 Passenger = standard Taxi-v3 | 2 Passengers = extended environment with route optimization")
+        is_multi = game_mode.startswith("2")
+        presets = PRESETS_2P if is_multi else PRESETS_1P
+
+        preset = st.selectbox("⚡ Preset", options=["Custom"] + list(presets.keys()), index=0)
+        p = presets.get(preset, None)
 
         st.markdown('<div class="sidebar-section">🧠 Algorithms</div>', unsafe_allow_html=True)
         selected_algos = st.multiselect("", options=list(ALGO_LABELS.keys()),
@@ -754,10 +782,12 @@ def main():
                                         label_visibility="collapsed")
 
         st.markdown('<div class="sidebar-section">🏋️ Training</div>', unsafe_allow_html=True)
-        train_episodes = st.number_input("Training episodes", min_value=100, max_value=10000,
-                                         value=p["train"] if p else 2000, step=100)
+        default_train = p["train"] if p else (10000 if is_multi else 2000)
+        default_test  = p["test"]  if p else 200
+        train_episodes = st.number_input("Training episodes", min_value=100, max_value=50000,
+                                         value=default_train, step=500 if is_multi else 100)
         test_episodes  = st.number_input("Test episodes", min_value=20, max_value=1000,
-                                         value=p["test"] if p else 200, step=10)
+                                         value=default_test, step=10)
 
         st.markdown('<div class="sidebar-section">⚙️ Hyperparameters</div>', unsafe_allow_html=True)
         alpha     = st.slider("Alpha", 0.01, 1.0, p["alpha"] if p else 0.15, 0.01,
@@ -792,6 +822,13 @@ def main():
     st.session_state.setdefault("test_results", {})
     st.session_state.setdefault("summary", [])
 
+    if is_multi:
+        st.markdown(
+            '<div style="display:inline-block;background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.35);'
+            'border-radius:20px;padding:5px 16px;font-size:12px;font-weight:600;color:#FBBF24;letter-spacing:1px;'
+            'margin-bottom:16px;">🏆 BONUS — 2 Passengers Mode &nbsp;(14,400 states)</div>',
+            unsafe_allow_html=True)
+
     col_btn, col_status = st.columns([1, 4])
     with col_btn:
         run_button = st.button("▶  Run Simulation")
@@ -821,14 +858,15 @@ def main():
             algo = ALGO_LABELS[label]
             Q, rewards, steps = run_algorithm(label, algo, train_episodes,
                                               alpha, gamma, eps_start, eps_decay,
-                                              batch_size, memory_size, lr)
+                                              batch_size, memory_size, lr,
+                                              multi_passenger=is_multi)
             trained_tables[label] = Q
             all_results[label]    = (rewards, steps)
 
             status_slot.markdown(
                 f'<div class="status-running"><div class="status-dot"></div>'
                 f'Evaluating {label}…</div>', unsafe_allow_html=True)
-            test_rewards, test_steps = evaluate_policy(label, Q, test_episodes)
+            test_rewards, test_steps = evaluate_policy(label, Q, test_episodes, multi_passenger=is_multi)
             test_results[label]      = (test_rewards, test_steps)
 
             summary.append({
@@ -945,7 +983,7 @@ sys.path.insert(0, '{os.path.dirname(__file__)}')
 from visualization.pygame_vis import visualize_policy
 with open('{tmp.name}', 'rb') as f:
     Q = pickle.load(f)
-visualize_policy(Q, {int(vis_episodes)}, '{vis_algo}', {vis_delay})
+visualize_policy(Q, {int(vis_episodes)}, '{vis_algo}', {vis_delay}, multi_passenger={is_multi})
 import os; os.unlink('{tmp.name}')
 """
             subprocess.Popen([sys.executable, "-c", script])

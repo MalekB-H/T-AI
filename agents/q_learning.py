@@ -27,7 +27,8 @@ def q_learning(
     rewards    : récompenses par épisode
     steps_list : steps par épisode
     """
-    Q   = np.zeros((STATE_SIZE, ACTION_SIZE))
+    n_states = getattr(env.observation_space, 'n', STATE_SIZE)
+    Q   = np.zeros((n_states, ACTION_SIZE))
     rewards, steps_list = [], []
     eps = eps_start
 
