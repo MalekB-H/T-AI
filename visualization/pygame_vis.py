@@ -78,8 +78,50 @@ def _encode_taxi_state(taxi_row, taxi_col, pass_loc, dest):
     return ((taxi_row * 5 + taxi_col) * 5 + pass_loc) * 4 + dest
 
 
+def _draw_danger_zones(surface, danger_zones):
+    """Draw skull icons on danger zone cells using basic shapes."""
+    import pygame
+    w, h = surface.get_size()
+    pad_left, pad_top = 35, 30
+    cell_w = (w - 70) / 5
+    cell_h = (h - 60) / 5
+
+    for row, col in danger_zones:
+        x = int(pad_left + col * cell_w)
+        y = int(pad_top + row * cell_h)
+        cx = int(x + cell_w / 2)
+        cy = int(y + cell_h / 2)
+        sz = int(min(cell_w, cell_h) * 0.35)
+
+        # dark red tinted background
+        bg = pygame.Surface((int(cell_w), int(cell_h)))
+        bg.fill((180, 0, 0))
+        bg.set_alpha(90)
+        surface.blit(bg, (x, y))
+
+        # skull head (white circle)
+        pygame.draw.circle(surface, (255, 255, 255), (cx, cy - 2), sz)
+        # jaw (smaller ellipse below)
+        pygame.draw.ellipse(surface, (255, 255, 255),
+                            (cx - sz + 4, cy + sz // 2 - 2, (sz - 4) * 2, sz // 2 + 4))
+        # left eye (black)
+        pygame.draw.circle(surface, (0, 0, 0), (cx - sz // 3, cy - 4), sz // 4 + 1)
+        # right eye (black)
+        pygame.draw.circle(surface, (0, 0, 0), (cx + sz // 3, cy - 4), sz // 4 + 1)
+        # nose (small triangle)
+        nose_y = cy + sz // 4 - 2
+        pygame.draw.polygon(surface, (0, 0, 0), [
+            (cx, nose_y - 3), (cx - 3, nose_y + 3), (cx + 3, nose_y + 3)])
+        # teeth (black lines on jaw)
+        jaw_top = cy + sz // 2
+        for tx in range(-sz // 2 + 6, sz // 2 - 4, 6):
+            pygame.draw.line(surface, (0, 0, 0),
+                             (cx + tx, jaw_top), (cx + tx, jaw_top + 6), 1)
+
+
 def visualize_policy(Q: np.ndarray, n_episodes: int = 3, label: str = "Agent",
-                     delay: float = 0.5, multi_passenger: bool = False) -> None:
+                     delay: float = 0.5, multi_passenger: bool = False,
+                     obstacle: bool = False) -> None:
     """
     Joue n_episodes de démonstration avec Pygame, en utilisant
     une politique complétement greedy (pas d'exploration).
@@ -93,12 +135,18 @@ def visualize_policy(Q: np.ndarray, n_episodes: int = 3, label: str = "Agent",
 
     sounds = _init_sounds()
 
-    # logic env: either Taxi-v3 or MultiPassenger
+    # logic env: either Taxi-v3, MultiPassenger, or ObstacleTaxi
     if multi_passenger:
         import sys
         sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
         from environments import MultiPassengerTaxiEnv
         logic_env = MultiPassengerTaxiEnv()
+    elif obstacle:
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+        from environments import ObstacleTaxiEnv
+        from environments.obstacle_taxi import DANGER_ZONES
+        logic_env = ObstacleTaxiEnv()
     else:
         logic_env = None  # use render_env directly
 
@@ -136,13 +184,30 @@ def visualize_policy(Q: np.ndarray, n_episodes: int = 3, label: str = "Agent",
                     pygame.time.wait(2000)
             except Exception:
                 pass
+        elif obstacle:
+            state, _ = logic_env.reset()
+            render_env.reset()
+            # sync render env
+            tr, tc = logic_env.taxi_row, logic_env.taxi_col
+            p_loc, dest = logic_env.pass_loc, logic_env.dest
+            render_env.unwrapped.s = _encode_taxi_state(tr, tc, p_loc, dest)
+            render_env.render()
+            # draw danger zones on first frame
+            try:
+                import pygame
+                surface = pygame.display.get_surface()
+                if surface:
+                    _draw_danger_zones(surface, DANGER_ZONES)
+                    pygame.display.flip()
+            except Exception:
+                pass
         else:
             state, _ = render_env.reset()
 
         done, total_reward, steps = False, 0, 0
-        if not multi_passenger:
+        if not multi_passenger and not obstacle:
             prev_passenger_loc = (state // 4) % 5
-        else:
+        elif multi_passenger:
             prev_pass1 = logic_env.pass1_loc
             prev_pass2 = logic_env.pass2_loc
 
@@ -246,6 +311,58 @@ def visualize_policy(Q: np.ndarray, n_episodes: int = 3, label: str = "Agent",
                                 info_bg.set_alpha(180)
                                 surface.blit(info_bg, (10, 52))
                                 surface.blit(info, (16, 56))
+                                pygame.display.flip()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
+            elif obstacle:
+                state, reward, done, truncated, _ = logic_env.step(action)
+                done = done or truncated
+                total_reward += reward
+                steps += 1
+
+                # sync render env
+                tr, tc = logic_env.taxi_row, logic_env.taxi_col
+                p_loc, dest = logic_env.pass_loc, logic_env.dest
+                render_env.unwrapped.s = _encode_taxi_state(tr, tc, p_loc, dest)
+
+                # sounds
+                if sounds:
+                    if reward <= -100:
+                        sounds["error"].play()
+                    elif action == 4 and reward >= 0:
+                        sounds["ding"].play()
+                    elif action == 5 and reward == 20:
+                        sounds["success"].play()
+                    elif reward == -10:
+                        sounds["error"].play()
+
+                try:
+                    frame = render_env.render()
+                    if not isinstance(frame, str):
+                        # draw danger zones overlay
+                        try:
+                            import pygame
+                            surface = pygame.display.get_surface()
+                            if surface:
+                                _draw_danger_zones(surface, DANGER_ZONES)
+                                # info overlay
+                                info_font = pygame.font.SysFont("Arial", 16)
+                                info = info_font.render(f"Steps: {steps}  |  Reward: {total_reward:.0f}", True, (255, 255, 255))
+                                info_bg = pygame.Surface((info.get_width() + 12, info.get_height() + 8))
+                                info_bg.fill((0, 0, 0))
+                                info_bg.set_alpha(180)
+                                surface.blit(info_bg, (10, 10))
+                                surface.blit(info, (16, 14))
+                                # danger warning badge
+                                badge_font = pygame.font.SysFont("Arial", 18, bold=True)
+                                badge_txt = badge_font.render("OBSTACLE MODE", True, (255, 255, 255))
+                                badge_bg = pygame.Surface((badge_txt.get_width() + 16, badge_txt.get_height() + 8))
+                                badge_bg.fill((220, 38, 38))
+                                badge_bg.blit(badge_txt, (8, 4))
+                                surface.blit(badge_bg, (10, 42))
                                 pygame.display.flip()
                         except Exception:
                             pass

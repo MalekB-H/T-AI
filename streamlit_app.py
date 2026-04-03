@@ -14,7 +14,8 @@ import streamlit.components.v1 as components
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from agents import random_agent, q_learning, monte_carlo, dqn_experience_replay
+from agents import random_agent, q_learning, sarsa, monte_carlo, dqn_experience_replay
+from environments import ObstacleTaxiEnv
 from core.tester import test_policy
 from utils.plots import plot_learning_curves, plot_bar_benchmark, plot_boxplots
 from utils.report import generate_report
@@ -27,18 +28,21 @@ os.makedirs(STORAGE_DIR, exist_ok=True)
 ALGO_LABELS = {
     "Random":      random_agent,
     "Q-Learning":  q_learning,
+    "SARSA":       sarsa,
     "Monte Carlo": monte_carlo,
     "DQN-ER":      dqn_experience_replay,
 }
 ALGO_COLORS = {
     "Random":      "#6b7280",
     "Q-Learning":  "#FBBF24",
+    "SARSA":       "#f97316",
     "Monte Carlo": "#3b82f6",
     "DQN-ER":      "#8b5cf6",
 }
 ALGO_ICONS = {
     "Random":      "🎲",
     "Q-Learning":  "⚡",
+    "SARSA":       "🔶",
     "Monte Carlo": "🔵",
     "DQN-ER":      "🧠",
 }
@@ -55,8 +59,13 @@ def moving_avg(data, window):
 
 def run_algorithm(label, algo, train_episodes, alpha, gamma,
                   eps_start, eps_decay, batch_size, memory_size, lr,
-                  multi_passenger=False):
-    env = MultiPassengerTaxiEnv() if multi_passenger else gym.make("Taxi-v3")
+                  multi_passenger=False, obstacle=False):
+    if multi_passenger:
+        env = MultiPassengerTaxiEnv()
+    elif obstacle:
+        env = ObstacleTaxiEnv()
+    else:
+        env = gym.make("Taxi-v3")
     if label == "Random":
         rewards, steps = algo(env, train_episodes, verbose=False)
         Q = None
@@ -65,6 +74,9 @@ def run_algorithm(label, algo, train_episodes, alpha, gamma,
                                  eps_start=eps_start, eps_decay=eps_decay, verbose=False)
     elif label == "Monte Carlo":
         Q, rewards, steps = algo(env, train_episodes, gamma=gamma,
+                                 eps_start=eps_start, eps_decay=eps_decay, verbose=False)
+    elif label == "SARSA":
+        Q, rewards, steps = algo(env, train_episodes, alpha=alpha, gamma=gamma,
                                  eps_start=eps_start, eps_decay=eps_decay, verbose=False)
     else:
         Q, rewards, steps = algo(env, train_episodes, gamma=gamma,
@@ -224,18 +236,24 @@ function chSpd(d){{
     return html
 
 
-def evaluate_policy(label, Q, test_episodes, multi_passenger=False):
+def evaluate_policy(label, Q, test_episodes, multi_passenger=False, obstacle=False):
     if Q is None:
-        env = MultiPassengerTaxiEnv() if multi_passenger else gym.make("Taxi-v3")
+        if multi_passenger:
+            env = MultiPassengerTaxiEnv()
+        elif obstacle:
+            env = ObstacleTaxiEnv()
+        else:
+            env = gym.make("Taxi-v3")
         rewards, steps = random_agent(env, test_episodes, verbose=False)
         env.close()
-    elif multi_passenger:
-        env = MultiPassengerTaxiEnv()
+    elif multi_passenger or obstacle:
+        env = MultiPassengerTaxiEnv() if multi_passenger else ObstacleTaxiEnv()
         rewards, steps = [], []
+        max_s = 400 if multi_passenger else 200
         for _ in range(test_episodes):
             state, _ = env.reset()
             total_r, s = 0, 0
-            for _ in range(400):
+            for _ in range(max_s):
                 action = int(np.argmax(Q[state]))
                 state, reward, done, trunc, _ = env.step(action)
                 total_r += reward
@@ -768,9 +786,10 @@ def main():
     with st.sidebar:
         st.markdown('<div class="sidebar-logo">🚕 &nbsp;Taxi Driver RL</div>', unsafe_allow_html=True)
 
-        game_mode = st.radio("🎮 Game mode", ["1 Passenger", "2 Passengers (Bonus)"],
-                             help="1 Passenger = standard Taxi-v3 | 2 Passengers = extended environment with route optimization")
+        game_mode = st.radio("🎮 Game mode", ["1 Passenger", "2 Passengers (Bonus)", "1 Passenger + Obstacles"],
+                             help="1 Passenger = standard Taxi-v3 | 2 Passengers = extended environment | Obstacles = danger zones to compare Q-Learning vs SARSA")
         is_multi = game_mode.startswith("2")
+        is_obstacle = game_mode.startswith("1 Passenger + O")
         presets = PRESETS_2P if is_multi else PRESETS_1P
 
         preset = st.selectbox("⚡ Preset", options=["Custom"] + list(presets.keys()), index=0)
@@ -778,7 +797,7 @@ def main():
 
         st.markdown('<div class="sidebar-section">🧠 Algorithms</div>', unsafe_allow_html=True)
         selected_algos = st.multiselect("", options=list(ALGO_LABELS.keys()),
-                                        default=["Q-Learning", "Monte Carlo", "DQN-ER"],
+                                        default=["Q-Learning", "SARSA", "Monte Carlo", "DQN-ER"],
                                         label_visibility="collapsed")
 
         st.markdown('<div class="sidebar-section">🏋️ Training</div>', unsafe_allow_html=True)
@@ -828,6 +847,12 @@ def main():
             'border-radius:20px;padding:5px 16px;font-size:12px;font-weight:600;color:#FBBF24;letter-spacing:1px;'
             'margin-bottom:16px;">🏆 BONUS — 2 Passengers Mode &nbsp;(14,400 states)</div>',
             unsafe_allow_html=True)
+    if is_obstacle:
+        st.markdown(
+            '<div style="display:inline-block;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);'
+            'border-radius:20px;padding:5px 16px;font-size:12px;font-weight:600;color:#EF4444;letter-spacing:1px;'
+            'margin-bottom:16px;">⚠️ OBSTACLE MODE — Danger zones on grid &nbsp;(Q-Learning vs SARSA)</div>',
+            unsafe_allow_html=True)
 
     col_btn, col_status = st.columns([1, 4])
     with col_btn:
@@ -859,14 +884,14 @@ def main():
             Q, rewards, steps = run_algorithm(label, algo, train_episodes,
                                               alpha, gamma, eps_start, eps_decay,
                                               batch_size, memory_size, lr,
-                                              multi_passenger=is_multi)
+                                              multi_passenger=is_multi, obstacle=is_obstacle)
             trained_tables[label] = Q
             all_results[label]    = (rewards, steps)
 
             status_slot.markdown(
                 f'<div class="status-running"><div class="status-dot"></div>'
                 f'Evaluating {label}…</div>', unsafe_allow_html=True)
-            test_rewards, test_steps = evaluate_policy(label, Q, test_episodes, multi_passenger=is_multi)
+            test_rewards, test_steps = evaluate_policy(label, Q, test_episodes, multi_passenger=is_multi, obstacle=is_obstacle)
             test_results[label]      = (test_rewards, test_steps)
 
             summary.append({
@@ -983,7 +1008,7 @@ sys.path.insert(0, '{os.path.dirname(__file__)}')
 from visualization.pygame_vis import visualize_policy
 with open('{tmp.name}', 'rb') as f:
     Q = pickle.load(f)
-visualize_policy(Q, {int(vis_episodes)}, '{vis_algo}', {vis_delay}, multi_passenger={is_multi})
+visualize_policy(Q, {int(vis_episodes)}, '{vis_algo}', {vis_delay}, multi_passenger={is_multi}, obstacle={is_obstacle})
 import os; os.unlink('{tmp.name}')
 """
             subprocess.Popen([sys.executable, "-c", script])
