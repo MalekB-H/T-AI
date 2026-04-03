@@ -736,29 +736,47 @@ def main():
     st.markdown(CSS, unsafe_allow_html=True)
 
     # sidebar
+    PRESETS = {
+        "Fast demo (500 ep)":      {"train": 500,  "test": 100, "alpha": 0.15, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.99},
+        "Standard (2000 ep)":      {"train": 2000, "test": 200, "alpha": 0.15, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.995},
+        "Deep training (5000 ep)": {"train": 5000, "test": 300, "alpha": 0.10, "gamma": 0.99, "eps_s": 1.0, "eps_d": 0.998},
+    }
+
     with st.sidebar:
         st.markdown('<div class="sidebar-logo">🚕 &nbsp;Taxi Driver RL</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="sidebar-section">Algorithms</div>', unsafe_allow_html=True)
+        preset = st.selectbox("⚡ Preset", options=["Custom"] + list(PRESETS.keys()), index=0)
+        p = PRESETS.get(preset, None)
+
+        st.markdown('<div class="sidebar-section">🧠 Algorithms</div>', unsafe_allow_html=True)
         selected_algos = st.multiselect("", options=list(ALGO_LABELS.keys()),
                                         default=["Q-Learning", "Monte Carlo", "DQN-ER"],
                                         label_visibility="collapsed")
 
-        st.markdown('<div class="sidebar-section">Training</div>', unsafe_allow_html=True)
-        train_episodes = st.number_input("Training episodes", min_value=100, max_value=10000, value=2000, step=100)
-        test_episodes  = st.number_input("Test episodes",     min_value=20,  max_value=1000,  value=200,  step=10)
+        st.markdown('<div class="sidebar-section">🏋️ Training</div>', unsafe_allow_html=True)
+        train_episodes = st.number_input("Training episodes", min_value=100, max_value=10000,
+                                         value=p["train"] if p else 2000, step=100)
+        test_episodes  = st.number_input("Test episodes", min_value=20, max_value=1000,
+                                         value=p["test"] if p else 200, step=10)
 
-        st.markdown('<div class="sidebar-section">Hyperparameters</div>', unsafe_allow_html=True)
-        alpha     = st.slider("Alpha",         0.01, 1.0,   0.15,  0.01)
-        gamma     = st.slider("Gamma",         0.80, 0.999, 0.99,  0.01)
-        eps_start = st.slider("Epsilon start", 0.0,  1.0,   1.0,   0.05)
-        eps_decay = st.slider("Epsilon decay", 0.90, 0.999, 0.995, 0.001)
+        st.markdown('<div class="sidebar-section">⚙️ Hyperparameters</div>', unsafe_allow_html=True)
+        alpha     = st.slider("Alpha", 0.01, 1.0, p["alpha"] if p else 0.15, 0.01,
+                              help="Learning rate — controls how much each update adjusts Q-values")
+        gamma     = st.slider("Gamma", 0.80, 0.999, p["gamma"] if p else 0.99, 0.01,
+                              help="Discount factor — how much the agent values future rewards vs immediate")
+        eps_start = st.slider("Epsilon start", 0.0, 1.0, p["eps_s"] if p else 1.0, 0.05,
+                              help="Initial exploration rate — 1.0 = fully random at start")
+        eps_decay = st.slider("Epsilon decay", 0.90, 0.999, p["eps_d"] if p else 0.995, 0.001,
+                              help="Decay multiplier per episode — lower = faster shift to exploitation")
 
         st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-        st.markdown('<div class="sidebar-section">DQN Parameters</div>', unsafe_allow_html=True)
-        batch_size  = st.number_input("Batch size",  min_value=16,   max_value=256,   value=64,   step=16)
-        memory_size = st.number_input("Memory size", min_value=1000, max_value=20000, value=5000, step=500)
-        lr          = st.slider("DQN learning rate", 0.001, 0.1, 0.01, 0.001)
+        st.markdown('<div class="sidebar-section">🔬 DQN Parameters</div>', unsafe_allow_html=True)
+        batch_size  = st.number_input("Batch size", min_value=16, max_value=256, value=64, step=16,
+                                      help="Number of transitions sampled from replay buffer per update")
+        memory_size = st.number_input("Memory size", min_value=1000, max_value=20000, value=5000, step=500,
+                                      help="Max capacity of the experience replay buffer")
+        lr          = st.slider("DQN learning rate", 0.001, 0.1, 0.01, 0.001,
+                                help="Step size for DQN tabular updates")
 
     # hero
     hero_html = HERO_HTML.replace("VIDEO_B64_PLACEHOLDER", VIDEO_B64)
