@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Generated outputs (runtime files)
+streamlit_outputs/
+*.png
+*.txt
+!requirements.txt
+!README.md
+
+# Assets (large binary files)
+assets/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
