@@ -1237,26 +1237,31 @@ def main():
     if st.session_state.run_done and st.session_state.trained_tables:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('<div class="section-title">Policy Visualization</div>', unsafe_allow_html=True)
-        st.markdown(
-            '<p style="color:#94a3b8;font-size:13px;margin-bottom:14px;">'
-            'Lance une fenêtre de jeu Taxi-v3 — regarde l\'agent jouer en temps réel.</p>',
-            unsafe_allow_html=True,
-        )
 
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            vis_algo = st.selectbox("Algorithm", options=list(st.session_state.trained_tables.keys()))
-        with c2:
-            vis_episodes = st.number_input("Episodes", min_value=1, max_value=10, value=3, step=1, key="vis_ep")
-        with c3:
-            vis_delay = st.slider("Step delay (s)", 0.05, 1.5, 0.4, 0.05, key="vis_dl")
+        # detect if running on a server (no display)
+        has_display = os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY") or sys.platform == "darwin"
 
-        if st.button("▶  Watch Agent Play"):
-            Q = st.session_state.trained_tables[vis_algo]
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pkl")
-            pickle.dump(Q, tmp)
-            tmp.close()
-            script = f"""
+        if has_display:
+            st.markdown(
+                '<p style="color:#94a3b8;font-size:13px;margin-bottom:14px;">'
+                'Lance une fenêtre de jeu Taxi-v3 — regarde l\'agent jouer en temps réel.</p>',
+                unsafe_allow_html=True,
+            )
+
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                vis_algo = st.selectbox("Algorithm", options=list(st.session_state.trained_tables.keys()))
+            with c2:
+                vis_episodes = st.number_input("Episodes", min_value=1, max_value=10, value=3, step=1, key="vis_ep")
+            with c3:
+                vis_delay = st.slider("Step delay (s)", 0.05, 1.5, 0.4, 0.05, key="vis_dl")
+
+            if st.button("▶  Watch Agent Play"):
+                Q = st.session_state.trained_tables[vis_algo]
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pkl")
+                pickle.dump(Q, tmp)
+                tmp.close()
+                script = f"""
 import pickle, sys
 sys.path.insert(0, '{os.path.dirname(__file__)}')
 from visualization.pygame_vis import visualize_policy
@@ -1265,8 +1270,22 @@ with open('{tmp.name}', 'rb') as f:
 visualize_policy(Q, {int(vis_episodes)}, '{vis_algo}', {vis_delay}, multi_passenger={is_multi}, obstacle={is_obstacle})
 import os; os.unlink('{tmp.name}')
 """
-            subprocess.Popen([sys.executable, "-c", script])
-            st.info("Fenêtre Pygame ouverte. Ferme-la pour revenir au dashboard.")
+                subprocess.Popen([sys.executable, "-c", script])
+                st.info("Fenêtre Pygame ouverte. Ferme-la pour revenir au dashboard.")
+        else:
+            st.markdown(
+                '<div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);'
+                'border-radius:12px;padding:20px 24px;color:#94a3b8;font-size:14px;line-height:1.6;">'
+                '<span style="font-size:18px;">🎮</span> &nbsp;'
+                '<strong style="color:#FBBF24;">Watch Agent Play</strong> '
+                'est disponible en mode local uniquement. '
+                'Cette fonctionnalité utilise Pygame pour afficher une fenêtre graphique '
+                'qui nécessite un environnement de bureau.<br><br>'
+                '<span style="color:#64748b;font-size:12px;">'
+                'Pour visualiser l\'agent : clonez le repo et lancez '
+                '<code style="color:#FBBF24;">streamlit run streamlit_app.py</code> en local.</span>'
+                '</div>',
+                unsafe_allow_html=True)
 
     # footer — split into parts to avoid Streamlit HTML truncation
     st.markdown('<div class="footer-wrap"><div class="footer-separator"></div></div>', unsafe_allow_html=True)
