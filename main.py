@@ -188,10 +188,12 @@ def user_mode():
 
     # plots & report
     console.print()
+    out_dir = "streamlit_outputs"
+    os.makedirs(out_dir, exist_ok=True)
     with console.status("[bold #FBBF24]Generation des graphiques...[/]"):
-        plot_learning_curves(all_results)
-        plot_bar_benchmark(all_results)
-        plot_boxplots(test_results)
+        plot_learning_curves(all_results, output=os.path.join(out_dir, "learning_curves.png"))
+        plot_bar_benchmark(all_results, output=os.path.join(out_dir, "benchmark_bar.png"))
+        plot_boxplots(test_results, output=os.path.join(out_dir, "boxplot_test.png"))
         generate_report(
             all_results, test_results,
             mode="User",
@@ -199,14 +201,16 @@ def user_mode():
                     "Alpha": alpha, "Gamma": gamma,
                     "Epsilon start": eps_start, "Epsilon decay": eps_decay,
                     "Dyna-Q k": dyna_k, "Algorithmes": algos_raw},
+            output_path=os.path.join(out_dir, "report.txt"),
         )
     console.print("[green]  ✓ Graphiques et rapport generes[/]")
 
     # list generated files
     outputs = ["learning_curves.png", "benchmark_bar.png", "boxplot_test.png", "report.txt"]
     for f in outputs:
-        if os.path.exists(f):
-            console.print(f"    [dim]→ {f}[/]")
+        fp = os.path.join(out_dir, f)
+        if os.path.exists(fp):
+            console.print(f"    [dim]→ {out_dir}/{f}[/]")
 
     choose_and_visualize(trained_tables)
 
@@ -277,16 +281,18 @@ def time_limited_mode():
     all_results = {algo_lbl: (rewards, steps_list)}
     test_results = {algo_lbl: (test_rew, test_steps)}
 
+    out_dir = "streamlit_outputs"
+    os.makedirs(out_dir, exist_ok=True)
     with console.status("[bold #FBBF24]Generation des graphiques...[/]"):
-        plot_learning_curves(all_results, output="time_limited_curves.png")
-        plot_boxplots(test_results, output="time_limited_boxplot.png")
+        plot_learning_curves(all_results, output=os.path.join(out_dir, "time_limited_curves.png"))
+        plot_boxplots(test_results, output=os.path.join(out_dir, "time_limited_boxplot.png"))
         generate_report(
             all_results, test_results,
             mode="Time-Limited",
             params={"Duree": f"{time_limit}s", "Episodes accomplis": ep,
                     "Alpha": alpha, "Gamma": gamma,
                     "Epsilon start": eps_start, "Epsilon decay": eps_decay},
-            output_path="report_time_limited.txt"
+            output_path=os.path.join(out_dir, "report_time_limited.txt")
         )
     console.print("[green]  ✓ Graphiques et rapport generes[/]")
 
