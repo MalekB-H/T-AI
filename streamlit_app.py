@@ -511,21 +511,44 @@ footer { visibility: hidden; }
 }
 [data-testid="stTable"] tr:hover td { background:rgba(255,255,255,.03) !important; }
 
-/* ── Tech ticker animation ── */
+/* ── Footer ── */
+.footer-wrap {
+    margin-top: 60px;
+    padding-top: 0;
+}
+.footer-separator {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(251,191,36,0.4), transparent);
+    margin-bottom: 32px;
+}
+.footer-stats {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+}
+.footer-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    font-size: 12px;
+    color: #94a3b8;
+    letter-spacing: 0.3px;
+}
+.footer-stat strong {
+    color: #FBBF24;
+    font-weight: 700;
+}
+/* ticker */
 .ticker-wrap {
     width: 100%;
     overflow: hidden;
-    padding: 24px 0;
-    margin: 40px 0 10px 0;
-}
-.ticker-label {
-    text-align: center;
-    color: #475569;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 16px;
+    padding: 20px 0;
+    margin-bottom: 28px;
 }
 .ticker-track {
     display: flex;
@@ -539,88 +562,133 @@ footer { visibility: hidden; }
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
-    opacity: 0.85;
+    opacity: 0.7;
     transition: opacity 0.3s;
 }
 .ticker-item:hover { opacity: 1; }
-.ticker-item img {
-    height: 28px;
-}
+.ticker-item img { height: 26px; }
 .ticker-item span {
-    color: #94a3b8;
-    font-size: 14px;
+    color: #64748b;
+    font-size: 13px;
     font-weight: 500;
-    letter-spacing: 0.5px;
     white-space: nowrap;
 }
 @keyframes ticker-scroll {
     0% { transform: translateX(0); }
     100% { transform: translateX(-50%); }
 }
+/* branding */
+.footer-brand {
+    text-align: center;
+    padding: 20px 0 10px 0;
+    border-top: 1px solid rgba(255,255,255,0.04);
+}
+.footer-brand-name {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #FBBF24, #f59e0b, #d97706);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+}
+.footer-brand-sub {
+    font-size: 11px;
+    color: #475569;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 16px;
+}
+.footer-meta {
+    font-size: 11px;
+    color: #334155;
+    letter-spacing: 0.5px;
+}
 </style>
 """
 
-TECH_TICKER_HTML = """
-<div class="ticker-wrap">
-    <div class="ticker-label">Built with</div>
-    <div class="ticker-track">
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python">
-            <span>Python</span>
+FOOTER_HTML = """
+<div class="footer-wrap">
+    <div class="footer-separator"></div>
+
+    <!-- Stats row -->
+    <div class="footer-stats">
+        <div class="footer-stat"><strong>6</strong> Algorithms</div>
+        <div class="footer-stat"><strong>14,400</strong> States</div>
+        <div class="footer-stat"><strong>3</strong> Environments</div>
+        <div class="footer-stat"><strong>4</strong> Reward Modes</div>
+        <div class="footer-stat"><strong>6</strong> Actions</div>
+    </div>
+
+    <!-- Tech ticker -->
+    <div class="ticker-wrap">
+        <div class="ticker-track">
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python">
+                <span>Python</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" alt="Gymnasium" style="height:22px;border-radius:4px;">
+                <span>Gymnasium</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://streamlit.io/images/brand/streamlit-mark-color.svg" alt="Streamlit">
+                <span>Streamlit</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/numpy/numpy-original.svg" alt="NumPy">
+                <span>NumPy</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/plotly/plotly-original.svg" alt="Plotly">
+                <span>Plotly</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/matplotlib/matplotlib-original.svg" alt="Matplotlib">
+                <span>Matplotlib</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/pygame/pygame/main/docs/reST/_static/pygame_logo.svg" alt="Pygame" style="height:26px;">
+                <span>Pygame</span>
+            </div>
+            <!-- duplicate for seamless loop -->
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python">
+                <span>Python</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" alt="Gymnasium" style="height:22px;border-radius:4px;">
+                <span>Gymnasium</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://streamlit.io/images/brand/streamlit-mark-color.svg" alt="Streamlit">
+                <span>Streamlit</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/numpy/numpy-original.svg" alt="NumPy">
+                <span>NumPy</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/plotly/plotly-original.svg" alt="Plotly">
+                <span>Plotly</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/matplotlib/matplotlib-original.svg" alt="Matplotlib">
+                <span>Matplotlib</span>
+            </div>
+            <div class="ticker-item">
+                <img src="https://raw.githubusercontent.com/pygame/pygame/main/docs/reST/_static/pygame_logo.svg" alt="Pygame" style="height:26px;">
+                <span>Pygame</span>
+            </div>
         </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" alt="Gymnasium" style="height:22px;border-radius:4px;">
-            <span>Gymnasium</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://streamlit.io/images/brand/streamlit-mark-color.svg" alt="Streamlit">
-            <span>Streamlit</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/numpy/numpy-original.svg" alt="NumPy">
-            <span>NumPy</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/plotly/plotly-original.svg" alt="Plotly">
-            <span>Plotly</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/matplotlib/matplotlib-original.svg" alt="Matplotlib">
-            <span>Matplotlib</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/pygame/pygame/main/docs/reST/_static/pygame_logo.svg" alt="Pygame" style="height:26px;">
-            <span>Pygame</span>
-        </div>
-        <!-- duplicate set for seamless loop -->
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python">
-            <span>Python</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" alt="Gymnasium" style="height:22px;border-radius:4px;">
-            <span>Gymnasium</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://streamlit.io/images/brand/streamlit-mark-color.svg" alt="Streamlit">
-            <span>Streamlit</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/numpy/numpy-original.svg" alt="NumPy">
-            <span>NumPy</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/plotly/plotly-original.svg" alt="Plotly">
-            <span>Plotly</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/matplotlib/matplotlib-original.svg" alt="Matplotlib">
-            <span>Matplotlib</span>
-        </div>
-        <div class="ticker-item">
-            <img src="https://raw.githubusercontent.com/pygame/pygame/main/docs/reST/_static/pygame_logo.svg" alt="Pygame" style="height:26px;">
-            <span>Pygame</span>
-        </div>
+    </div>
+
+    <!-- Branding -->
+    <div class="footer-brand">
+        <div class="footer-brand-name">TAXI DRIVER</div>
+        <div class="footer-brand-sub">Reinforcement Learning Benchmark Platform</div>
+        <div class="footer-meta">v1.0 &nbsp;·&nbsp; 2026 &nbsp;·&nbsp; Open Source</div>
     </div>
 </div>
 """
@@ -1285,8 +1353,45 @@ import os; os.unlink('{tmp.name}')
             subprocess.Popen([sys.executable, "-c", script])
             st.info("Fenêtre Pygame ouverte. Ferme-la pour revenir au dashboard.")
 
-    # footer ticker — always visible at the bottom
-    st.markdown(TECH_TICKER_HTML, unsafe_allow_html=True)
+    # footer — split into parts to avoid Streamlit HTML truncation
+    st.markdown('<div class="footer-wrap"><div class="footer-separator"></div></div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="footer-stats">
+        <div class="footer-stat"><strong>6</strong> Algorithms</div>
+        <div class="footer-stat"><strong>14,400</strong> States</div>
+        <div class="footer-stat"><strong>3</strong> Environments</div>
+        <div class="footer-stat"><strong>4</strong> Reward Modes</div>
+        <div class="footer-stat"><strong>6</strong> Actions</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="ticker-wrap"><div class="ticker-track">
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python"><span>Python</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" alt="Gymnasium" style="height:22px;border-radius:4px;"><span>Gymnasium</span></div>
+        <div class="ticker-item"><img src="https://streamlit.io/images/brand/streamlit-mark-color.svg" alt="Streamlit"><span>Streamlit</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/numpy/numpy-original.svg" alt="NumPy"><span>NumPy</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/plotly/plotly-original.svg" alt="Plotly"><span>Plotly</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/matplotlib/matplotlib-original.svg" alt="Matplotlib"><span>Matplotlib</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/pygame/pygame/main/docs/reST/_static/pygame_logo.svg" alt="Pygame" style="height:26px;"><span>Pygame</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python"><span>Python</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" alt="Gymnasium" style="height:22px;border-radius:4px;"><span>Gymnasium</span></div>
+        <div class="ticker-item"><img src="https://streamlit.io/images/brand/streamlit-mark-color.svg" alt="Streamlit"><span>Streamlit</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/numpy/numpy-original.svg" alt="NumPy"><span>NumPy</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/plotly/plotly-original.svg" alt="Plotly"><span>Plotly</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/matplotlib/matplotlib-original.svg" alt="Matplotlib"><span>Matplotlib</span></div>
+        <div class="ticker-item"><img src="https://raw.githubusercontent.com/pygame/pygame/main/docs/reST/_static/pygame_logo.svg" alt="Pygame" style="height:26px;"><span>Pygame</span></div>
+    </div></div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="footer-brand">
+        <div class="footer-brand-name">TAXI DRIVER</div>
+        <div class="footer-brand-sub">Reinforcement Learning Benchmark Platform</div>
+        <div class="footer-meta">v1.0 &nbsp;&middot;&nbsp; 2026 &nbsp;&middot;&nbsp; Open Source</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
