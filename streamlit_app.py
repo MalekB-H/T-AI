@@ -14,7 +14,7 @@ import streamlit.components.v1 as components
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from agents import random_agent, q_learning, sarsa, monte_carlo, dqn_experience_replay
+from agents import random_agent, q_learning, sarsa, dyna_q, monte_carlo, dqn_experience_replay
 from environments import ObstacleTaxiEnv
 from environments import ShapedRewardTaxiEnv
 from core.tester import test_policy
@@ -30,6 +30,7 @@ ALGO_LABELS = {
     "Random":      random_agent,
     "Q-Learning":  q_learning,
     "SARSA":       sarsa,
+    "Dyna-Q":      dyna_q,
     "Monte Carlo": monte_carlo,
     "DQN-ER":      dqn_experience_replay,
 }
@@ -37,6 +38,7 @@ ALGO_COLORS = {
     "Random":      "#6b7280",
     "Q-Learning":  "#FBBF24",
     "SARSA":       "#f97316",
+    "Dyna-Q":      "#22d3ee",
     "Monte Carlo": "#3b82f6",
     "DQN-ER":      "#8b5cf6",
 }
@@ -44,6 +46,7 @@ ALGO_ICONS = {
     "Random":      "🎲",
     "Q-Learning":  "⚡",
     "SARSA":       "🔶",
+    "Dyna-Q":      "🧩",
     "Monte Carlo": "🔵",
     "DQN-ER":      "🧠",
 }
@@ -60,7 +63,8 @@ def moving_avg(data, window):
 
 def run_algorithm(label, algo, train_episodes, alpha, gamma,
                   eps_start, eps_decay, batch_size, memory_size, lr,
-                  multi_passenger=False, obstacle=False, reward_mode="default"):
+                  multi_passenger=False, obstacle=False, reward_mode="default",
+                  dyna_k=5):
     if multi_passenger:
         env = MultiPassengerTaxiEnv()
     elif obstacle:
@@ -81,6 +85,10 @@ def run_algorithm(label, algo, train_episodes, alpha, gamma,
     elif label == "SARSA":
         Q, rewards, steps = algo(env, train_episodes, alpha=alpha, gamma=gamma,
                                  eps_start=eps_start, eps_decay=eps_decay, verbose=False)
+    elif label == "Dyna-Q":
+        Q, rewards, steps = algo(env, train_episodes, alpha=alpha, gamma=gamma,
+                                 eps_start=eps_start, eps_decay=eps_decay,
+                                 k=dyna_k, verbose=False)
     else:
         Q, rewards, steps = algo(env, train_episodes, gamma=gamma,
                                  eps_start=eps_start, eps_decay=eps_decay,
@@ -925,7 +933,7 @@ def main():
 
         st.markdown('<div class="sidebar-section">🧠 Algorithms</div>', unsafe_allow_html=True)
         selected_algos = st.multiselect("", options=list(ALGO_LABELS.keys()),
-                                        default=["Q-Learning", "SARSA", "Monte Carlo", "DQN-ER"],
+                                        default=["Q-Learning", "SARSA", "Dyna-Q", "Monte Carlo", "DQN-ER"],
                                         label_visibility="collapsed")
 
         st.markdown('<div class="sidebar-section">🏋️ Training</div>', unsafe_allow_html=True)
@@ -947,6 +955,10 @@ def main():
                               help="Decay multiplier per episode — lower = faster shift to exploitation")
 
         st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="sidebar-section">🧩 Dyna-Q Parameters</div>', unsafe_allow_html=True)
+        dyna_k = st.slider("k (mental replays)", 0, 20, 5, 1,
+                            help="Number of mental replay steps per real step. k=0 → same as Q-Learning. k=5 → ~4x faster convergence.")
+
         st.markdown('<div class="sidebar-section">🔬 DQN Parameters</div>', unsafe_allow_html=True)
         batch_size  = st.number_input("Batch size", min_value=16, max_value=256, value=64, step=16,
                                       help="Number of transitions sampled from replay buffer per update")
@@ -1045,7 +1057,7 @@ def main():
                                               alpha, gamma, eps_start, eps_decay,
                                               batch_size, memory_size, lr,
                                               multi_passenger=is_multi, obstacle=is_obstacle,
-                                              reward_mode=reward_mode)
+                                              reward_mode=reward_mode, dyna_k=dyna_k)
             trained_tables[label] = Q
             all_results[label]    = (rewards, steps)
 
