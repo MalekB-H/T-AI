@@ -6,7 +6,6 @@ import pickle
 import json
 import time
 import base64
-import threading
 import numpy as np
 import gymnasium as gym
 import streamlit as st
@@ -606,91 +605,6 @@ footer { visibility: hidden; }
     letter-spacing: 0.5px;
 }
 </style>
-"""
-
-FOOTER_HTML = """
-<div class="footer-wrap">
-    <div class="footer-separator"></div>
-
-    <!-- Stats row -->
-    <div class="footer-stats">
-        <div class="footer-stat"><strong>6</strong> Algorithms</div>
-        <div class="footer-stat"><strong>14,400</strong> States</div>
-        <div class="footer-stat"><strong>3</strong> Environments</div>
-        <div class="footer-stat"><strong>4</strong> Reward Modes</div>
-        <div class="footer-stat"><strong>6</strong> Actions</div>
-    </div>
-
-    <!-- Tech ticker -->
-    <div class="ticker-wrap">
-        <div class="ticker-track">
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python">
-                <span>Python</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" alt="Gymnasium" style="height:22px;border-radius:4px;">
-                <span>Gymnasium</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://streamlit.io/images/brand/streamlit-mark-color.svg" alt="Streamlit">
-                <span>Streamlit</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/numpy/numpy-original.svg" alt="NumPy">
-                <span>NumPy</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/plotly/plotly-original.svg" alt="Plotly">
-                <span>Plotly</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/matplotlib/matplotlib-original.svg" alt="Matplotlib">
-                <span>Matplotlib</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/pygame/pygame/main/docs/reST/_static/pygame_logo.svg" alt="Pygame" style="height:26px;">
-                <span>Pygame</span>
-            </div>
-            <!-- duplicate for seamless loop -->
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/python/python-original.svg" alt="Python">
-                <span>Python</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/Farama-Foundation/Gymnasium/main/gymnasium-text.png" alt="Gymnasium" style="height:22px;border-radius:4px;">
-                <span>Gymnasium</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://streamlit.io/images/brand/streamlit-mark-color.svg" alt="Streamlit">
-                <span>Streamlit</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/numpy/numpy-original.svg" alt="NumPy">
-                <span>NumPy</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/plotly/plotly-original.svg" alt="Plotly">
-                <span>Plotly</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/matplotlib/matplotlib-original.svg" alt="Matplotlib">
-                <span>Matplotlib</span>
-            </div>
-            <div class="ticker-item">
-                <img src="https://raw.githubusercontent.com/pygame/pygame/main/docs/reST/_static/pygame_logo.svg" alt="Pygame" style="height:26px;">
-                <span>Pygame</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Branding -->
-    <div class="footer-brand">
-        <div class="footer-brand-name">TAXI DRIVER</div>
-        <div class="footer-brand-sub">Reinforcement Learning Benchmark Platform</div>
-        <div class="footer-meta">v1.0 &nbsp;·&nbsp; 2026 &nbsp;·&nbsp; Open Source</div>
-    </div>
-</div>
 """
 
 def _video_b64():
