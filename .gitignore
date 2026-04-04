@@ -15,6 +15,7 @@ streamlit_outputs/
 
 # Assets (large binary files)
 assets/
+!assets/demo.gif
 
 # Streamlit
 .streamlit/secrets.toml
