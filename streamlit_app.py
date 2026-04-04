@@ -607,14 +607,15 @@ footer { visibility: hidden; }
 </style>
 """
 
-def _video_b64():
-    path = os.path.join(os.path.dirname(__file__), "assets", "bg.mp4")
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
+def _video_source():
+    """Return video source: static URL if file exists, else empty."""
+    static_path = os.path.join(os.path.dirname(__file__), "static", "bg.mp4")
+    assets_path = os.path.join(os.path.dirname(__file__), "assets", "bg.mp4")
+    if os.path.exists(static_path) or os.path.exists(assets_path):
+        return "./app/static/bg.mp4"
     return ""
 
-VIDEO_B64 = _video_b64()
+VIDEO_SRC = _video_source()
 
 HERO_HTML = """
 <!DOCTYPE html>
@@ -702,7 +703,7 @@ video {
 </head>
 <body>
 <video autoplay loop muted playsinline id="bgvid">
-    <source src="data:video/mp4;base64,VIDEO_B64_PLACEHOLDER" type="video/mp4">
+    <source src="VIDEO_SRC_PLACEHOLDER" type="video/mp4">
 </video>
 <div class="video-overlay"></div>
 <div class="hero-content">
@@ -950,7 +951,7 @@ def main():
                                 help="Step size for DQN tabular updates")
 
     # hero
-    hero_html = HERO_HTML.replace("VIDEO_B64_PLACEHOLDER", VIDEO_B64)
+    hero_html = HERO_HTML.replace("VIDEO_SRC_PLACEHOLDER", VIDEO_SRC)
     components.html(hero_html, height=380, scrolling=False)
 
     if not selected_algos:
