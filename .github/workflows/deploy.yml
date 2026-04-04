@@ -1,0 +1,25 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Enter container and update
+            pct exec 203 -- bash -c "
+              cd /opt/taxi-driver &&
+              git pull origin main &&
+              /opt/taxi-driver/venv/bin/pip install -r requirements.txt --quiet &&
+              systemctl restart taxi-driver
+            "
+            echo "Deployed successfully!"
