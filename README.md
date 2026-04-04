@@ -160,11 +160,18 @@ Benchmark on standard Taxi-v3 (2,000 training episodes):
 
 ## References
 
-- **Sutton & Barto (2018)** — [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/the-book-2nd.html) — Chapters 6, 8
-- **Gymnasium Taxi-v3** — [Documentation](https://gymnasium.farama.org/environments/toy_text/taxi/)
-- **Watkins (1989)** — Q-Learning: original algorithm
-- **Rummery & Niranjan (1994)** — SARSA: on-policy TD control
-- **Sutton (1990)** — Dyna-Q: integrated learning, planning, and reacting
+| Paper | Authors | Year | Link |
+|-------|---------|------|------|
+| Reinforcement Learning: An Introduction (Ch. 6, 8) | Sutton & Barto | 2018 | [Book (free)](http://incompleteideas.net/book/the-book-2nd.html) |
+| Learning from Delayed Rewards (Q-Learning) | Watkins | 1989 | [Thesis](https://www.cs.rhul.ac.uk/~chrisw/new_thesis.pdf) |
+| On-Line Q-Learning Using Connectionist Systems (SARSA) | Rummery & Niranjan | 1994 | [Paper](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=5765a58ca19511aba0e3a3fcc1e46657530403a6) |
+| Integrated Architectures for Learning, Planning, and Reacting (Dyna-Q) | Sutton | 1990 | [Paper](https://doi.org/10.1016/B978-1-55860-141-3.50030-4) |
+| Human-level Control Through Deep RL (DQN) | Mnih et al., DeepMind | 2015 | [Nature](https://www.nature.com/articles/nature14236) |
+| Mastering the Game of Go Without Human Knowledge (AlphaGo Zero) | Silver et al., DeepMind | 2017 | [Nature](https://www.nature.com/articles/nature24270) |
+| Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model (MuZero) | Schrittwieser et al., DeepMind | 2020 | [Nature](https://www.nature.com/articles/s41586-020-03051-4) |
+| Gymnasium Taxi-v3 Environment | Farama Foundation | 2023 | [Documentation](https://gymnasium.farama.org/environments/toy_text/taxi/) |
+
+> **Note** : Notre implémentation de Dyna-Q s'inscrit dans la lignée des approches **model-based RL** initiées par Sutton (1990). Cette famille d'algorithmes a évolué vers les architectures de DeepMind : **AlphaGo Zero** (2017) et **MuZero** (2020), qui utilisent le même principe fondamental — construire un modèle interne du monde pour planifier sans interaction réelle. Dyna-Q est l'ancêtre conceptuel de ces systèmes à la pointe de l'état de l'art.
 
 ---
 
